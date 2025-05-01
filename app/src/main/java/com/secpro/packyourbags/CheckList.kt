@@ -14,8 +14,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SearchView
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.StaggeredGridLayoutManager
+import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.secpro.packyourbags.Adapter.CheckListAdapter
 import com.secpro.packyourbags.Constants.MyConstants
 import com.secpro.packyourbags.Model.Items
@@ -35,9 +37,19 @@ class CheckList : AppCompatActivity() {
     private lateinit var header: String
     private lateinit var show: String
 
+    private var isFetching = false
+    private var isFirstLoad = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_check_list)
+
+        // Initialize Firebase with proper error handling
+        try {
+            FirebaseApp.initializeApp(this)
+        } catch (e: IllegalStateException) {
+            android.util.Log.w("CheckList", "Firebase already initialized")
+        }
 
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
@@ -51,11 +63,26 @@ class CheckList : AppCompatActivity() {
         linearLayout = findViewById(R.id.linearLayout)
         txtEmptyList = findViewById(R.id.txtEmptyList)
 
+        // Initialize RecyclerView and adapter
+        recyclerView.setHasFixedSize(true)
+        recyclerView.setItemViewCacheSize(20)
+        recyclerView.layoutManager = StaggeredGridLayoutManager(1, LinearLayout.VERTICAL)
+        checkListAdapter = CheckListAdapter(this, itemsList, show)
+        recyclerView.adapter = checkListAdapter
+
+        // Enable hardware acceleration
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+            WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
+        )
+        window.decorView.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+
         if (MyConstants.FALSE_STRING == show) {
             linearLayout.visibility = View.GONE
         }
 
-        fetchItems()
+        // Initialize default items for new users
+        initializeDefaultItemsForNewUser()
 
         // Handle button click
         btnAdd.setOnClickListener {
@@ -302,6 +329,7 @@ class CheckList : AppCompatActivity() {
         
         if (defaultItems.isEmpty()) {
             android.util.Log.d("CheckList", "No default items found for category: $header")
+            updateRecycler(itemsList)
             return
         }
 
@@ -337,71 +365,155 @@ class CheckList : AppCompatActivity() {
                             itemsList.addAll(itemsToAdd)
                             updateRecycler(itemsList)
                         }
-                        .addOnFailureListener {
-                            android.util.Log.e("CheckList", "Failed to add default items: ${it.message}")
+                        .addOnFailureListener { e ->
+                            android.util.Log.e("CheckList", "Failed to add default items: ${e.message}")
                             Toast.makeText(this, "Failed to add default items", Toast.LENGTH_SHORT).show()
+                            updateRecycler(itemsList)
                         }
                 }
         }
+    }
+
+    private fun initializeDefaultItemsForNewUser() {
+        if (user == null) {
+            android.util.Log.e("CheckList", "User is null, cannot initialize default items")
+            return
+        }
+
+        // Check if user already has items
+        db.collection("users").document(user.uid)
+            .collection("items")
+            .limit(1)
+            .get()
+            .addOnSuccessListener { documents ->
+                if (documents.isEmpty) {
+                    android.util.Log.d("CheckList", "Initializing default items for new user")
+                    
+                    // Get all default items for each category
+                    val allDefaultItems = mutableListOf<Items>()
+                    allDefaultItems.addAll(getDefaultItemsForCategory(MyConstants.BASIC_NEEDS_CAMEL_CASE))
+                    allDefaultItems.addAll(getDefaultItemsForCategory(MyConstants.CLOTHING_CAMEL_CASE))
+                    allDefaultItems.addAll(getDefaultItemsForCategory(MyConstants.PERSONAL_CARE_CAMEL_CASE))
+                    allDefaultItems.addAll(getDefaultItemsForCategory(MyConstants.BABY_NEEDS_CAMEL_CASE))
+                    allDefaultItems.addAll(getDefaultItemsForCategory(MyConstants.HEALTH_CAMEL_CASE))
+                    allDefaultItems.addAll(getDefaultItemsForCategory(MyConstants.TECHNOLOGY_CAMEL_CASE))
+                    allDefaultItems.addAll(getDefaultItemsForCategory(MyConstants.FOOD_CAMEL_CASE))
+                    allDefaultItems.addAll(getDefaultItemsForCategory(MyConstants.BEACH_SUPPLIES_CAMEL_CASE))
+                    allDefaultItems.addAll(getDefaultItemsForCategory(MyConstants.CAR_SUPPLIES_CAMEL_CASE))
+
+                    android.util.Log.d("CheckList", "Total default items to add: ${allDefaultItems.size}")
+
+                    // Add all default items to Firestore
+                    val batch = db.batch()
+                    allDefaultItems.forEach { item ->
+                        val docRef = db.collection("users").document(user.uid)
+                            .collection("items")
+                            .document()
+                        batch.set(docRef, item)
+                    }
+
+                    batch.commit()
+                        .addOnSuccessListener {
+                            android.util.Log.d("CheckList", "Successfully initialized default items for new user")
+                            // After initialization, fetch items for current category
+                            fetchItems()
+                        }
+                        .addOnFailureListener { e ->
+                            android.util.Log.e("CheckList", "Failed to initialize default items: ${e.message}")
+                            Toast.makeText(this, "Failed to initialize default items", Toast.LENGTH_SHORT).show()
+                            fetchItems() // Still try to fetch items even if initialization failed
+                        }
+                } else {
+                    android.util.Log.d("CheckList", "User already has items, skipping initialization")
+                    fetchItems()
+                }
+            }
+            .addOnFailureListener { e ->
+                android.util.Log.e("CheckList", "Error checking user items: ${e.message}")
+                Toast.makeText(this, "Error checking user items", Toast.LENGTH_SHORT).show()
+                fetchItems() // Try to fetch items even if check failed
+            }
     }
 
     override fun onResume() {
         super.onResume()
-        fetchItems()
+        // Only fetch items if not already fetching and not first load
+        if (!isFetching && !isFirstLoad) {
+            fetchItems()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Clear any pending animations
+        recyclerView.clearAnimation()
+        // Save current state
+        android.util.Log.d("CheckList", "onPause called, saving current state")
     }
 
     private fun fetchItems() {
         if (user == null) {
-            Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
+            android.util.Log.e("CheckList", "User is null, cannot fetch items")
             return
         }
 
-        android.util.Log.d("CheckList", "Fetching items for category: $header")
+        if (isFetching) {
+            android.util.Log.d("CheckList", "Already fetching items, skipping")
+            return
+        }
 
-        db.collection("users").document(user.uid)
-            .collection("items")
-            .whereEqualTo("category", header)
-            .get()
-            .addOnSuccessListener { documents ->
-                itemsList.clear()
-                val seenItems = mutableSetOf<String>() // Track seen item names
-                
-                for (doc in documents) {
-                    val item = doc.toObject(Items::class.java)
-                    // Only add if we haven't seen this item name before
-                    if (seenItems.add(item.itemname)) {
-                        itemsList.add(item)
-                        android.util.Log.d("CheckList", "Added item: ${item.itemname}")
-                    } else {
-                        android.util.Log.d("CheckList", "Skipped duplicate item: ${item.itemname}")
+        isFetching = true
+        android.util.Log.d("CheckList", "Starting fetch for category: $header")
+
+        // Clear the current list before fetching new items
+        itemsList.clear()
+        checkListAdapter.updateItems(itemsList) // Clear the adapter immediately
+
+        if (header == MyConstants.MY_SELECTIONS) {
+            // Fetch only checked items for My Selections
+            db.collection("users").document(user.uid)
+                .collection("items")
+                .whereEqualTo("checked", true)
+                .get()
+                .addOnSuccessListener { documents ->
+                    android.util.Log.d("CheckList", "Successfully fetched ${documents.size()} checked items")
+                    val seenItems = mutableSetOf<String>()
+                    
+                    for (doc in documents) {
+                        val item = doc.toObject(Items::class.java)
+                        if (seenItems.add(item.itemname)) {
+                            itemsList.add(item)
+                            android.util.Log.d("CheckList", "Added checked item: ${item.itemname}")
+                        }
                     }
+                    updateRecycler(itemsList)
+                    isFetching = false
                 }
-                
-                if (header == MyConstants.MY_SELECTIONS) {
-                    db.collection("users").document(user.uid)
-                        .collection("items")
-                        .whereEqualTo("checked", true)
-                        .get()
-                        .addOnSuccessListener { checkedDocuments ->
-                            itemsList.clear()
-                            seenItems.clear()
-                            
-                            for (doc in checkedDocuments) {
-                                val item = doc.toObject(Items::class.java)
-                                if (seenItems.add(item.itemname)) {
-                                    itemsList.add(item)
-                                    android.util.Log.d("CheckList", "Added checked item: ${item.itemname}")
-                                } else {
-                                    android.util.Log.d("CheckList", "Skipped duplicate checked item: ${item.itemname}")
-                                }
-                            }
-                            updateRecycler(itemsList)
+                .addOnFailureListener { e ->
+                    android.util.Log.e("CheckList", "Failed to fetch checked items: ${e.message}")
+                    Toast.makeText(this, "Failed to fetch checked items: ${e.message}", Toast.LENGTH_SHORT).show()
+                    updateRecycler(mutableListOf())
+                    isFetching = false
+                }
+        } else {
+            // Fetch items for the current category
+            db.collection("users").document(user.uid)
+                .collection("items")
+                .whereEqualTo("category", header)
+                .get()
+                .addOnSuccessListener { documents ->
+                    android.util.Log.d("CheckList", "Successfully fetched ${documents.size()} items")
+                    val seenItems = mutableSetOf<String>()
+                    
+                    for (doc in documents) {
+                        val item = doc.toObject(Items::class.java)
+                        if (seenItems.add(item.itemname)) {
+                            itemsList.add(item)
+                            android.util.Log.d("CheckList", "Added item: ${item.itemname}")
                         }
-                        .addOnFailureListener {
-                            Toast.makeText(this, "Failed to fetch checked items: ${it.message}", Toast.LENGTH_SHORT).show()
-                            updateRecycler(mutableListOf())
-                        }
-                } else {
+                    }
+                    
+                    // If no items found and not in My List or My Selections, add default items
                     if (itemsList.isEmpty() && 
                         header != MyConstants.MY_LIST_CAMEL_CASE && 
                         header != MyConstants.MY_SELECTIONS) {
@@ -410,17 +522,23 @@ class CheckList : AppCompatActivity() {
                     } else {
                         updateRecycler(itemsList)
                     }
+                    isFetching = false
                 }
-            }
-            .addOnFailureListener {
-                Toast.makeText(this, "Failed to fetch items: ${it.message}", Toast.LENGTH_SHORT).show()
-                updateRecycler(mutableListOf())
-            }
+                .addOnFailureListener { e ->
+                    android.util.Log.e("CheckList", "Failed to fetch items: ${e.message}")
+                    Toast.makeText(this, "Failed to fetch items: ${e.message}", Toast.LENGTH_SHORT).show()
+                    updateRecycler(mutableListOf())
+                    isFetching = false
+                }
+        }
     }
 
     private fun updateRecycler(itemsList: MutableList<Items>) {
         runOnUiThread {
+            android.util.Log.d("CheckList", "Updating recycler with ${itemsList.size} items")
+            
             if (itemsList.isEmpty()) {
+                android.util.Log.d("CheckList", "List is empty, showing empty message")
                 recyclerView.visibility = View.GONE
                 txtEmptyList.visibility = View.VISIBLE
                 txtEmptyList.text = when (header) {
@@ -429,13 +547,28 @@ class CheckList : AppCompatActivity() {
                     else -> "No items in this category. Add some items to get started!"
                 }
             } else {
+                android.util.Log.d("CheckList", "List has items, showing RecyclerView")
                 recyclerView.visibility = View.VISIBLE
                 txtEmptyList.visibility = View.GONE
-        recyclerView.setHasFixedSize(true)
-        recyclerView.layoutManager = StaggeredGridLayoutManager(1, LinearLayout.VERTICAL)
-        checkListAdapter = CheckListAdapter(this, itemsList, show)
-        recyclerView.adapter = checkListAdapter
+                checkListAdapter.updateItems(itemsList)
+                recyclerView.post {
+                    recyclerView.scheduleLayoutAnimation()
+                }
             }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Proper cleanup
+        try {
+            recyclerView.adapter = null
+            itemsList.clear()
+            // Clear any remaining references
+            recyclerView.clearDisappearingChildren()
+            recyclerView.removeAllViews()
+        } catch (e: Exception) {
+            android.util.Log.e("CheckList", "Error during cleanup: ${e.message}")
         }
     }
 }
