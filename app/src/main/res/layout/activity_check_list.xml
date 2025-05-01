@@ -1,62 +1,112 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#E3ACAC"
-    tools:context=".CheckList">
+    android:background="@color/white">
 
-    <!-- Empty list message -->
-    <TextView
-        android:id="@+id/txtEmptyList"
-        android:layout_width="wrap_content"
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
-        android:textSize="18sp"
-        android:textColor="#000000"
-        android:gravity="center"
-        android:visibility="gone"
-        android:padding="16dp"
-        android:text="No items in this category. Add some items to get started!" />
+        android:background="@color/white"
+        android:elevation="0dp"
+        app:elevation="0dp">
 
-    <!-- Scrollable list -->
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/white"
+            android:minHeight="?attr/actionBarSize"
+            app:titleTextColor="@color/purple_500"
+            app:contentInsetStart="16dp"
+            app:contentInsetLeft="16dp"
+            app:contentInsetEnd="16dp"
+            app:contentInsetRight="16dp"
+            app:elevation="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/txtTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/purple_500"
+                    android:fontFamily="sans-serif-medium" />
+
+                <TextView
+                    android:id="@+id/txtCategoryDescription"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="14sp"
+                    android:textColor="@color/purple_200"
+                    android:fontFamily="sans-serif"
+                    android:layout_marginTop="4dp" />
+
+            </LinearLayout>
+
+        </androidx.appcompat.widget.Toolbar>
+
+        <androidx.appcompat.widget.SearchView
+            android:id="@+id/searchView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/search_background"
+            android:iconifiedByDefault="true"
+            app:queryHint="Search items..."
+            app:iconifiedByDefault="true" />
+
+    </com.google.android.material.appbar.AppBarLayout>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginBottom="60dp" />
+        android:clipToPadding="false"
+        android:padding="8dp"
+        android:overScrollMode="never"
+        android:background="@android:color/white"
+        android:scrollbars="vertical"
+        android:fadeScrollbars="false"
+        android:visibility="visible"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
-    <!-- Bottom input bar -->
-    <LinearLayout
-        android:id="@+id/linearLayout"
+    <TextView
+        android:id="@+id/txtEmptyList"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="@string/empty_category"
+        android:textAlignment="center"
+        android:textSize="16sp"
+        android:padding="16dp"
+        android:textColor="@color/purple_500"
+        android:visibility="gone" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnAdd"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:contentDescription="@string/add_new_item"
+        app:srcCompat="@drawable/ic_add" />
+
+    <com.google.android.material.progressindicator.LinearProgressIndicator
+        android:id="@+id/progressIndicator"
         android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:layout_alignParentBottom="true"
-        android:background="#FFD6D6"
-        android:orientation="horizontal"
-        android:padding="4dp">
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:visibility="gone"
+        app:indicatorColor="@color/purple_500"
+        app:trackColor="@color/purple_100" />
 
-        <EditText
-            android:id="@+id/txtAdd"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:hint="Enter item to add..."
-            android:textSize="16sp"
-            android:background="@android:color/white"
-            android:paddingHorizontal="8dp" />
-
-        <ImageButton
-            android:id="@+id/btnAdd"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_gravity="center_vertical"
-            android:layout_marginStart="8dp"
-            android:background="@drawable/check"
-            android:scaleType="fitCenter"
-            android:padding="8dp"
-            android:contentDescription="Add" />
-    </LinearLayout>
-
-</RelativeLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
  

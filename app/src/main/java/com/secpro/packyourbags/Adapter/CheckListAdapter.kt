@@ -7,8 +7,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.CheckBox
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.Toast
+import androidx.cardview.widget.CardView
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -20,162 +23,251 @@ class CheckListAdapter(
     private val context: Context,
     private var itemsList: MutableList<Items>,
     private val show: String
-) : RecyclerView.Adapter<CheckListAdapter.CheckListViewHolder>() {
+) : RecyclerView.Adapter<CheckListAdapter.ViewHolder>() {
 
     private val db = FirebaseFirestore.getInstance()
-    private val uid = FirebaseAuth.getInstance().currentUser?.uid
-    private val seenItems = mutableSetOf<String>()
-    private val viewPool = RecyclerView.RecycledViewPool().apply {
-        setMaxRecycledViews(0, 20) // Cache more views for better performance
+    private val user = FirebaseAuth.getInstance().currentUser
+    private var recyclerView: RecyclerView? = null
+
+    class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val checkBox: CheckBox = itemView.findViewById(R.id.checkBox)
+        val btnDelete: ImageButton = itemView.findViewById(R.id.btnDelete)
+        val itemLayout: CardView = itemView.findViewById(R.id.itemLayout)
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CheckListViewHolder {
-        val view = LayoutInflater.from(context).inflate(R.layout.check_list_item, parent, false)
-        return CheckListViewHolder(view)
-    }
-
-    override fun onBindViewHolder(holder: CheckListViewHolder, position: Int) {
-        val item = itemsList[position]
-        holder.bind(item)
-    }
-
-    override fun getItemCount(): Int = itemsList.size
-
-    fun updateItems(newItems: MutableList<Items>) {
-        android.util.Log.d("CheckListAdapter", "Updating items, current size: ${itemsList.size}, new size: ${newItems.size}")
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        super.onAttachedToRecyclerView(recyclerView)
+        this.recyclerView = recyclerView
         
-        val oldSize = itemsList.size
-        val tempList = mutableListOf<Items>()
-        seenItems.clear()
-        
-        // Add only unique items to temp list
-        for (item in newItems) {
-            if (seenItems.add(item.itemname)) {
-                tempList.add(item)
-                android.util.Log.d("CheckListAdapter", "Added item to temp list: ${item.itemname}")
-            }
-        }
-        
-        // Update the main list
-        itemsList.clear()
-        itemsList.addAll(tempList)
-        
-        // Notify adapter of changes
-        if (oldSize > itemsList.size) {
-            android.util.Log.d("CheckListAdapter", "Removing ${oldSize - itemsList.size} items")
-            notifyItemRangeRemoved(itemsList.size, oldSize - itemsList.size)
-        }
-        
-        if (itemsList.isNotEmpty()) {
-            android.util.Log.d("CheckListAdapter", "Updating ${itemsList.size} items")
-            notifyItemRangeChanged(0, itemsList.size)
-        }
-        
-        if (itemsList.size > oldSize) {
-            android.util.Log.d("CheckListAdapter", "Adding ${itemsList.size - oldSize} new items")
-            notifyItemRangeInserted(oldSize, itemsList.size - oldSize)
-        }
-        
-        android.util.Log.d("CheckListAdapter", "Final item count: ${itemsList.size}")
-    }
+        // Set up swipe actions
+        val swipeCallback = object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT) {
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean = false
 
-    inner class CheckListViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val layout: LinearLayout = itemView.findViewById(R.id.linearLayout)
-        private val checkBox: CheckBox = itemView.findViewById(R.id.checkBox)
-        private val btnDelete: Button = itemView.findViewById(R.id.btnDelete)
-
-        fun bind(item: Items) {
-            android.util.Log.d("CheckListAdapter", "Binding item: ${item.itemname}")
-            
-            checkBox.text = item.itemname
-            checkBox.isChecked = item.checked
-
-            if (show == MyConstants.FALSE_STRING) {
-                btnDelete.visibility = View.GONE
-                layout.setBackgroundResource(R.drawable.border_1dp)
-            } else {
-                layout.setBackgroundResource(
-                    if (item.checked) R.color.purple_700 else R.drawable.border_1dp
-                )
-            }
-
-            checkBox.setOnClickListener {
-                val isChecked = checkBox.isChecked
-                item.checked = isChecked
-
-                getItemDocumentId(item) { docId ->
-                    if (docId != null && uid != null) {
-                        db.collection("users").document(uid)
-                            .collection("items").document(docId)
-                            .update("checked", isChecked)
-                            .addOnSuccessListener {
-                                notifyItemChanged(adapterPosition)
-                                Toast.makeText(
-                                    context,
-                                    "(${item.itemname}) ${if (isChecked) "Packed" else "Un-Packed"}",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                            .addOnFailureListener { e ->
-                                android.util.Log.e("CheckListAdapter", "Error updating item: ${e.message}")
-                                // Revert the checkbox state on failure
-                                checkBox.isChecked = !isChecked
-                                item.checked = !isChecked
-                            }
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                try {
+                    val position = viewHolder.adapterPosition
+                    if (position !in itemsList.indices) {
+                        android.util.Log.e("CheckListAdapter", "Invalid position in swipe: $position")
+                        return
                     }
+                    val item = itemsList[position]
+                    
+                    when (direction) {
+                        ItemTouchHelper.LEFT -> {
+                            // Delete item
+                            deleteItem(item, position)
+                        }
+                        ItemTouchHelper.RIGHT -> {
+                            // Toggle checked status
+                            toggleItemChecked(item, position)
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("CheckListAdapter", "Error in swipe action: ${e.message}")
+                }
+            }
+        }
+
+        val itemTouchHelper = ItemTouchHelper(swipeCallback)
+        itemTouchHelper.attachToRecyclerView(recyclerView)
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        android.util.Log.d("CheckListAdapter", "Creating new ViewHolder")
+        val view = LayoutInflater.from(parent.context)
+            .inflate(R.layout.check_list_item, parent, false)
+        return ViewHolder(view)
+    }
+
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        try {
+            if (position !in itemsList.indices) {
+                android.util.Log.e("CheckListAdapter", "Invalid position: $position")
+                return
+            }
+
+            val item = itemsList[position]
+            android.util.Log.d("CheckListAdapter", "Binding item at position $position: ${item.itemname}")
+            
+            holder.checkBox.text = item.itemname
+            holder.checkBox.isChecked = item.checked
+
+            // Log view dimensions
+            android.util.Log.d("CheckListAdapter", "View dimensions - Width: ${holder.itemView.width}, Height: ${holder.itemView.height}")
+            android.util.Log.d("CheckListAdapter", "CheckBox dimensions - Width: ${holder.checkBox.width}, Height: ${holder.checkBox.height}")
+
+            // Set up click listeners
+            holder.checkBox.setOnCheckedChangeListener(null) // Clear any existing listener
+            holder.checkBox.setOnCheckedChangeListener { _, isChecked ->
+                try {
+                    toggleItemChecked(item, position)
+                } catch (e: Exception) {
+                    android.util.Log.e("CheckListAdapter", "Error in checkbox change: ${e.message}")
                 }
             }
 
-            btnDelete.setOnClickListener {
-                AlertDialog.Builder(context)
-                    .setTitle("Delete (${item.itemname})")
-                    .setMessage("Are you sure?")
-                    .setIcon(R.drawable.ic_delete)
-                    .setPositiveButton("Confirm") { _, _ ->
-                        getItemDocumentId(item) { docId ->
-                            if (docId != null && uid != null) {
-                                db.collection("users").document(uid)
-                                    .collection("items").document(docId)
-                                    .delete()
-                                    .addOnSuccessListener {
-                                        val position = adapterPosition
-                                        if (position != RecyclerView.NO_POSITION) {
-                                            itemsList.removeAt(position)
-                                            notifyItemRemoved(position)
-                                            Toast.makeText(context, "Item deleted", Toast.LENGTH_SHORT).show()
-                                        }
+            holder.btnDelete.setOnClickListener {
+                try {
+                    deleteItem(item, position)
+                } catch (e: Exception) {
+                    android.util.Log.e("CheckListAdapter", "Error in delete click: ${e.message}")
+                }
+            }
+
+            // Ensure views are visible
+            holder.itemLayout.visibility = View.VISIBLE
+            holder.checkBox.visibility = View.VISIBLE
+            holder.btnDelete.visibility = View.VISIBLE
+
+            // Add animation
+            holder.itemLayout.alpha = 0f
+            holder.itemLayout.animate()
+                .alpha(1f)
+                .setDuration(300)
+                .setListener(null)
+        } catch (e: Exception) {
+            android.util.Log.e("CheckListAdapter", "Error in onBindViewHolder: ${e.message}")
+        }
+    }
+
+    private fun toggleItemChecked(item: Items, position: Int) {
+        try {
+            if (user == null) return
+
+            val updatedItem = item.copy(checked = !item.checked)
+            db.collection("users").document(user.uid)
+                .collection("items")
+                .whereEqualTo("itemname", item.itemname)
+                .whereEqualTo("category", item.category)
+                .get()
+                .addOnSuccessListener { documents ->
+                    try {
+                        for (doc in documents) {
+                            db.collection("users").document(user.uid)
+                                .collection("items")
+                                .document(doc.id)
+                                .update("checked", updatedItem.checked)
+                                .addOnSuccessListener {
+                                    if (position in itemsList.indices) {
+                                        itemsList[position] = updatedItem
+                                        notifyItemChanged(position)
                                     }
-                                    .addOnFailureListener { e ->
-                                        android.util.Log.e("CheckListAdapter", "Error deleting item: ${e.message}")
-                                        Toast.makeText(context, "Failed to delete item", Toast.LENGTH_SHORT).show()
-                                    }
-                            }
+                                }
                         }
+                    } catch (e: Exception) {
+                        android.util.Log.e("CheckListAdapter", "Error updating item: ${e.message}")
                     }
-                    .setNegativeButton("Cancel", null)
-                    .show()
+                }
+        } catch (e: Exception) {
+            android.util.Log.e("CheckListAdapter", "Error in toggleItemChecked: ${e.message}")
+        }
+    }
+
+    private fun deleteItem(item: Items, position: Int) {
+        try {
+            if (user == null) return
+
+            db.collection("users").document(user.uid)
+                .collection("items")
+                .whereEqualTo("itemname", item.itemname)
+                .whereEqualTo("category", item.category)
+                .get()
+                .addOnSuccessListener { documents ->
+                    try {
+                        for (doc in documents) {
+                            db.collection("users").document(user.uid)
+                                .collection("items")
+                                .document(doc.id)
+                                .delete()
+                                .addOnSuccessListener {
+                                    if (position in itemsList.indices) {
+                                        itemsList.removeAt(position)
+                                        notifyItemRemoved(position)
+                                        notifyItemRangeChanged(position, itemsList.size)
+                                    }
+                                }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("CheckListAdapter", "Error deleting item: ${e.message}")
+                    }
+                }
+        } catch (e: Exception) {
+            android.util.Log.e("CheckListAdapter", "Error in deleteItem: ${e.message}")
+        }
+    }
+
+    fun updateItems(newItems: MutableList<Items>) {
+        try {
+            android.util.Log.d("CheckListAdapter", "Updating items, old size: ${itemsList.size}, new size: ${newItems.size}")
+            
+            // Log old and new items for debugging
+            itemsList.forEachIndexed { index, item ->
+                android.util.Log.d("CheckListAdapter", "Old item $index: ${item.itemname}, checked: ${item.checked}")
+            }
+            
+            newItems.forEachIndexed { index, item ->
+                android.util.Log.d("CheckListAdapter", "New item $index: ${item.itemname}, checked: ${item.checked}")
+            }
+            
+            // Calculate the differences and update only changed items
+            val oldList = itemsList.toList()
+            val diffResult = calculateDiff(oldList, newItems)
+            
+            // Update the items list - make a new copy to avoid reference issues
+            itemsList.clear()
+            itemsList.addAll(ArrayList(newItems))
+            
+            android.util.Log.d("CheckListAdapter", "Items list updated, new size: ${itemsList.size}")
+            
+            // Apply the calculated differences
+            diffResult.dispatchUpdatesTo(this)
+            
+            // Also notify that the whole dataset changed as a fallback
+            notifyDataSetChanged()
+            
+            android.util.Log.d("CheckListAdapter", "Notified adapter of changes")
+            
+            // Force layout update on the next UI cycle
+            recyclerView?.post {
+                android.util.Log.d("CheckListAdapter", "Forcing layout update")
+                recyclerView?.requestLayout()
+                recyclerView?.invalidate()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("CheckListAdapter", "Error updating items: ${e.message}")
+            android.util.Log.e("CheckListAdapter", "Stack trace: ${e.stackTraceToString()}")
+            
+            // Try a simpler approach as fallback
+            try {
+                itemsList.clear()
+                itemsList.addAll(newItems)
+                notifyDataSetChanged()
+                android.util.Log.d("CheckListAdapter", "Fallback update completed")
+            } catch (e2: Exception) {
+                android.util.Log.e("CheckListAdapter", "Even fallback update failed: ${e2.message}")
             }
         }
     }
 
-    private fun getItemDocumentId(item: Items, callback: (String?) -> Unit) {
-        if (uid == null) {
-            callback(null)
-            return
-        }
-
-        db.collection("users").document(uid)
-            .collection("items")
-            .whereEqualTo("itemname", item.itemname)
-            .whereEqualTo("category", item.category)
-            .get()
-            .addOnSuccessListener { snapshot ->
-                val doc = snapshot.documents.firstOrNull()
-                callback(doc?.id)
+    private fun calculateDiff(oldList: List<Items>, newList: List<Items>): androidx.recyclerview.widget.DiffUtil.DiffResult {
+        return androidx.recyclerview.widget.DiffUtil.calculateDiff(object : androidx.recyclerview.widget.DiffUtil.Callback() {
+            override fun getOldListSize() = oldList.size
+            override fun getNewListSize() = newList.size
+            
+            override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+                return oldList[oldItemPosition].itemname == newList[newItemPosition].itemname &&
+                       oldList[oldItemPosition].category == newList[newItemPosition].category
             }
-            .addOnFailureListener { e ->
-                android.util.Log.e("CheckListAdapter", "Error getting document ID: ${e.message}")
-                callback(null)
+            
+            override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+                return oldList[oldItemPosition] == newList[newItemPosition]
             }
+        })
     }
+
+    override fun getItemCount(): Int = itemsList.size
 }

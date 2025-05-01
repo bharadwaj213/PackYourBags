@@ -1,5 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Pack Your Bag</string>
+    <string name="app_name">Pack Your Bags</string>
     <string name="open">Open Navigation</string>
     <string name="close">Close Navigation</string>
+    <string name="delete_item">Delete Item</string>
+    <string name="empty_category">No items in this category.\nAdd some items to get started!</string>
+    <string name="add_new_item">Add new item</string>
 </resources>
