@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.secpro.packyourbags.CheckList
 import com.secpro.packyourbags.Constants.MyConstants
 import com.secpro.packyourbags.R
+import com.secpro.packyourbags.SuggestItemsActivity
 
 class MyAdapter(
     private val context: Context,
@@ -32,26 +33,33 @@ class MyAdapter(
         holder.linearLayout.alpha = 0.8f
 
         holder.linearLayout.setOnClickListener {
-            val intent = Intent(context, CheckList::class.java).apply {
-                val category = when (titles[position]) {
-                    MyConstants.BASIC_NEEDS_CAMEL_CASE -> MyConstants.BASIC_NEEDS_CAMEL_CASE
-                    MyConstants.CLOTHING_CAMEL_CASE -> MyConstants.CLOTHING_CAMEL_CASE
-                    MyConstants.PERSONAL_CARE_CAMEL_CASE -> MyConstants.PERSONAL_CARE_CAMEL_CASE
-                    MyConstants.BABY_NEEDS_CAMEL_CASE -> MyConstants.BABY_NEEDS_CAMEL_CASE
-                    MyConstants.HEALTH_CAMEL_CASE -> MyConstants.HEALTH_CAMEL_CASE
-                    MyConstants.TECHNOLOGY_CAMEL_CASE -> MyConstants.TECHNOLOGY_CAMEL_CASE
-                    MyConstants.FOOD_CAMEL_CASE -> MyConstants.FOOD_CAMEL_CASE
-                    MyConstants.BEACH_SUPPLIES_CAMEL_CASE -> MyConstants.BEACH_SUPPLIES_CAMEL_CASE
-                    MyConstants.CAR_SUPPLIES_CAMEL_CASE -> MyConstants.CAR_SUPPLIES_CAMEL_CASE
-                    MyConstants.NEEDS_CAMEL_CASE -> MyConstants.NEEDS_CAMEL_CASE
-                    MyConstants.MY_LIST_CAMEL_CASE -> MyConstants.MY_LIST_CAMEL_CASE
-                    MyConstants.MY_SELECTIONS_CAMEL_CASE -> MyConstants.MY_SELECTIONS_CAMEL_CASE
-                    else -> titles[position]
+            if (titles[position] == MyConstants.SUGGEST_ME_CAMEL_CASE) {
+                // Launch the SuggestItemsActivity for the "Suggest Me" category
+                val intent = Intent(context, SuggestItemsActivity::class.java)
+                context.startActivity(intent)
+            } else {
+                // Handle other categories as before
+                val intent = Intent(context, CheckList::class.java).apply {
+                    val category = when (titles[position]) {
+                        MyConstants.BASIC_NEEDS_CAMEL_CASE -> MyConstants.BASIC_NEEDS_CAMEL_CASE
+                        MyConstants.CLOTHING_CAMEL_CASE -> MyConstants.CLOTHING_CAMEL_CASE
+                        MyConstants.PERSONAL_CARE_CAMEL_CASE -> MyConstants.PERSONAL_CARE_CAMEL_CASE
+                        MyConstants.BABY_NEEDS_CAMEL_CASE -> MyConstants.BABY_NEEDS_CAMEL_CASE
+                        MyConstants.HEALTH_CAMEL_CASE -> MyConstants.HEALTH_CAMEL_CASE
+                        MyConstants.TECHNOLOGY_CAMEL_CASE -> MyConstants.TECHNOLOGY_CAMEL_CASE
+                        MyConstants.FOOD_CAMEL_CASE -> MyConstants.FOOD_CAMEL_CASE
+                        MyConstants.BEACH_SUPPLIES_CAMEL_CASE -> MyConstants.BEACH_SUPPLIES_CAMEL_CASE
+                        MyConstants.CAR_SUPPLIES_CAMEL_CASE -> MyConstants.CAR_SUPPLIES_CAMEL_CASE
+                        MyConstants.NEEDS_CAMEL_CASE -> MyConstants.NEEDS_CAMEL_CASE
+                        MyConstants.MY_LIST_CAMEL_CASE -> MyConstants.MY_LIST_CAMEL_CASE
+                        MyConstants.MY_SELECTIONS_CAMEL_CASE -> MyConstants.MY_SELECTIONS_CAMEL_CASE
+                        else -> titles[position]
+                    }
+                    putExtra(MyConstants.HEADER_SMALL, category)
+                    putExtra(MyConstants.SHOW_SMALL, if (category == MyConstants.MY_SELECTIONS_CAMEL_CASE) MyConstants.FALSE_STRING else MyConstants.TRUE_STRING)
                 }
-                putExtra(MyConstants.HEADER_SMALL, category)
-                putExtra(MyConstants.SHOW_SMALL, if (category == MyConstants.MY_SELECTIONS_CAMEL_CASE) MyConstants.FALSE_STRING else MyConstants.TRUE_STRING)
+                context.startActivity(intent)
             }
-            context.startActivity(intent)
         }
     }
 

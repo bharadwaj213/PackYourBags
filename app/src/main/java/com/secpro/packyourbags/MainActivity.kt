@@ -115,7 +115,8 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             R.drawable.basic_needs, R.drawable.cloths, R.drawable.person_care,
             R.drawable.baby_needs, R.drawable.health, R.drawable.technology,
             R.drawable.food, R.drawable.beach, R.drawable.car,
-            R.drawable.need, R.drawable.mylist, R.drawable.selection
+            R.drawable.need, R.drawable.mylist, R.drawable.selection,
+            R.drawable.suggest_me, R.drawable.mylist // Reuse mylist icon for recommended items
         )
     }
 
@@ -126,7 +127,8 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             MyConstants.HEALTH_CAMEL_CASE, MyConstants.TECHNOLOGY_CAMEL_CASE,
             MyConstants.FOOD_CAMEL_CASE, MyConstants.BEACH_SUPPLIES_CAMEL_CASE,
             MyConstants.CAR_SUPPLIES_CAMEL_CASE, MyConstants.NEEDS_CAMEL_CASE,
-            MyConstants.MY_LIST_CAMEL_CASE, MyConstants.MY_SELECTIONS_CAMEL_CASE
+            MyConstants.MY_LIST_CAMEL_CASE, MyConstants.MY_SELECTIONS_CAMEL_CASE,
+            MyConstants.SUGGEST_ME_CAMEL_CASE, MyConstants.RECOMMENDED_ITEMS_CAMEL_CASE
         )
     }
 }

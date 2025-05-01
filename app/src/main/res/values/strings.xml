@@ -6,4 +6,16 @@
     <string name="delete_item">Delete Item</string>
     <string name="empty_category">No items in this category.\nAdd some items to get started!</string>
     <string name="add_new_item">Add new item</string>
+    
+    <!-- Suggest Me Feature -->
+    <string name="suggest_me_title">Suggest Items</string>
+    <string name="suggest_me_description">Get personalized packing suggestions based on your destination and travel dates.</string>
+    <string name="destination_hint">Destination City</string>
+    <string name="travel_dates">Travel Dates</string>
+    <string name="start_date">Start Date</string>
+    <string name="end_date">End Date</string>
+    <string name="generate_suggestions">Generate Suggestions</string>
+    <string name="suggested_items">Suggested Items</string>
+    <string name="add_to_list">Add Selected Items to My List</string>
+    <string name="add_to_recommended">Add to Recommended Items</string>
 </resources>

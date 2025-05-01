@@ -21,4 +21,6 @@ object MyConstants {
     const val MY_LIST_CAMEL_CASE = "My List"
     const val MY_SELECTIONS_CAMEL_CASE = "My Selections"
     const val FIRST_TIME_CAMEL_CASE = "First Time"
+    const val SUGGEST_ME_CAMEL_CASE = "Suggest Me"
+    const val RECOMMENDED_ITEMS_CAMEL_CASE = "Recommended Items"
 }

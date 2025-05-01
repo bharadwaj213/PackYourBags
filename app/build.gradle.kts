@@ -50,6 +50,9 @@ dependencies {
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
     
+    // OkHttp for network requests
+    implementation("com.squareup.okhttp3:okhttp:4.11.0")
+    
     // Testing dependencies
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext)
