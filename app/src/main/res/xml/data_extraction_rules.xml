@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+   Sample data extraction rules file; uncomment and customize as necessary.
+   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
+   for details.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- Exclude shared preferences -->
+        <exclude domain="sharedpref" path="."/>
+        
+        <!-- Exclude databases -->
+        <exclude domain="database" path="."/>
+        
+        <!-- Exclude files -->
+        <exclude domain="file" path="."/>
+        
+        <!-- Exclude external files -->
+        <exclude domain="external" path="."/>
+        
+        <!-- Exclude root files -->
+        <exclude domain="root" path="."/>
+    </cloud-backup>
+    
+    <device-transfer>
+        <!-- Exclude shared preferences -->
+        <exclude domain="sharedpref" path="."/>
+        
+        <!-- Exclude databases -->
+        <exclude domain="database" path="."/>
+        
+        <!-- Exclude files -->
+        <exclude domain="file" path="."/>
+        
+        <!-- Exclude external files -->
+        <exclude domain="external" path="."/>
+        
+        <!-- Exclude root files -->
+        <exclude domain="root" path="."/>
+    </device-transfer>
+</data-extraction-rules>

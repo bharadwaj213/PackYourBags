@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "681946096903",
+    "project_id": "pack-your-bags-8cdcc",
+    "storage_bucket": "pack-your-bags-8cdcc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:681946096903:android:dda1c32f511d827bfd51a2",
+        "android_client_info": {
+          "package_name": "com.secpro.packyourbags"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCkWlfI3bxQVsxdSazum3tph7niEWE611Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
