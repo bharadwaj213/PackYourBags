@@ -42,6 +42,10 @@
             android:name=".SuggestItemsActivity" 
             android:exported="false"
             android:theme="@style/Theme.PackYourBags.NoActionBar" />
+        <activity 
+            android:name=".SettingsActivity" 
+            android:exported="false"
+            android:theme="@style/Theme.PackYourBags.NoActionBar" />
 
     </application>
 

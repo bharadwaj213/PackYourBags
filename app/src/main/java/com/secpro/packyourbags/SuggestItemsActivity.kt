@@ -1,8 +1,11 @@
 package com.secpro.packyourbags
 
 import android.app.DatePickerDialog
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
@@ -16,6 +19,11 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.secpro.packyourbags.Adapter.SuggestedItemsAdapter
 import com.secpro.packyourbags.Constants.MyConstants
 import com.secpro.packyourbags.Model.Items
+import com.secpro.packyourbags.api.ShuttleAIService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.*
 import org.json.JSONObject
 import java.io.IOException
@@ -53,6 +61,9 @@ class SuggestItemsActivity : AppCompatActivity() {
         .build()
 
     private val OPENWEATHER_API_KEY = "bd5e378503939ddaee76f12ad7a97608" // Using a free API key
+    
+    private lateinit var shuttleAIService: ShuttleAIService
+    private val coroutineScope = CoroutineScope(Dispatchers.Main)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,6 +75,7 @@ class SuggestItemsActivity : AppCompatActivity() {
             setupDatePickers()
             setupRecyclerView()
             setupButtons()
+            shuttleAIService = ShuttleAIService(this)
         } catch (e: Exception) {
             Log.e("SuggestItems", "Error in onCreate: ${e.message}")
             e.printStackTrace()
@@ -102,6 +114,23 @@ class SuggestItemsActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e("SuggestItems", "Error setting up toolbar: ${e.message}")
             e.printStackTrace()
+        }
+    }
+    
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_suggest_items, menu)
+        return true
+    }
+    
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_settings -> {
+                // Open settings activity
+                val intent = Intent(this, SettingsActivity::class.java)
+                startActivity(intent)
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
         }
     }
     
@@ -365,45 +394,127 @@ class SuggestItemsActivity : AppCompatActivity() {
             progressBar.visibility = View.VISIBLE
             weatherInfo.text = "Generating packing recommendations for $destination..."
         }
+
+        // Create weather description for the AI
+        val weatherDesc = if (weatherData != null) {
+            "The weather is ${weatherData.description} with temperatures around ${weatherData.temp.toInt()}°C " +
+            "(ranging from ${weatherData.tempMin.toInt()}°C to ${weatherData.tempMax.toInt()}°C)."
+        } else {
+            "No weather information is available."
+        }
         
-        // Get AI-generated packing list using a prompt
-        generateAIRecommendations(destination, weatherData, tripDuration)
+        // Use ShuttleAI to generate packing list
+        coroutineScope.launch {
+            try {
+                Log.d("SuggestItems", "🔍 Starting ShuttleAI recommendation generation for $destination")
+                
+                // Get recommendations from ShuttleAI
+                val recommendedItems = withContext(Dispatchers.IO) {
+                    Log.d("SuggestItems", "🔍 Making ShuttleAI API call")
+                    shuttleAIService.generatePackingRecommendations(
+                        destination = destination,
+                        weatherDesc = weatherDesc,
+                        tripDuration = tripDuration
+                    )
+                }
+                
+                if (recommendedItems.isNotEmpty()) {
+                    Log.d("SuggestItems", "🔍 ShuttleAI returned ${recommendedItems.size} items - USING THESE")
+                    
+                    // Convert recommendations to Items objects
+                    val items = recommendedItems.map { itemName ->
+                        Items(
+                            itemname = itemName,
+                            category = MyConstants.SUGGEST_ME_CAMEL_CASE,
+                            addedby = "system",
+                            checked = false
+                        )
+                    }
+                    
+                    // Update UI with recommendations
+                    updateUIWithItems(items, weatherInfoText, destination)
+                } else {
+                    Log.e("SuggestItems", "🔍 ShuttleAI returned no items, falling back to local recommendations")
+                    // Fall back to local recommendations
+                    fallbackToLocalRecommendations(destination, weatherData, tripDuration, weatherInfoText)
+                }
+            } catch (e: Exception) {
+                Log.e("SuggestItems", "🔍 Error with ShuttleAI: ${e.message}")
+                e.printStackTrace()
+                
+                // Fall back to local recommendations if ShuttleAI fails
+                Log.d("SuggestItems", "🔍 FALLING BACK to local recommendations due to error")
+                fallbackToLocalRecommendations(destination, weatherData, tripDuration, weatherInfoText)
+            }
+        }
     }
     
-    private fun generateAIRecommendations(
-        destination: String, 
-        weatherData: WeatherData?, 
-        tripDuration: Int
+    private fun updateUIWithItems(items: List<Items>, weatherInfoText: String, destination: String) {
+        runOnUiThread {
+            Log.d("SuggestItems", "🔍 Updating UI with ${items.size} items from ShuttleAI")
+            
+            // Log an easily identifiable marker for which city this is for
+            Log.d("SuggestItems", "🌍 DESTINATION: $destination 🌍")
+            
+            // Add a timestamp to the logs for easier tracking
+            val timestamp = SimpleDateFormat("HH:mm:ss", Locale.US).format(Date())
+            Log.d("SuggestItems", "⏰ TIME: $timestamp ⏰")
+            
+            weatherInfo.text = weatherInfoText
+            
+            // Clear and update the adapter with the new items
+            suggestedItems.clear()
+            suggestedItems.addAll(items)
+            
+            // Log the suggested items
+            Log.d("SuggestItems", "==== AI SUGGESTIONS FROM SHUTTLEAI ====")
+            Log.d("SuggestItems", "Total items suggested: ${items.size}")
+            Log.d("SuggestItems", "AI Suggestions for $destination (${items.size} items):")
+            for (item in items) {
+                Log.d("SuggestItems", "- ${item.itemname}")
+            }
+            
+            // Use the adapter's update method
+            adapter.updateItems(items)
+            
+            // Ensure RecyclerView is visible and has proper height
+            val recyclerViewHeight = if (items.size > 5) {
+                resources.displayMetrics.heightPixels / 2
+            } else {
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            }
+            suggestedItemsRecyclerView.layoutParams.height = recyclerViewHeight
+            suggestedItemsRecyclerView.visibility = View.VISIBLE
+            suggestedItemsRecyclerView.requestLayout()
+            
+            // Show UI elements
+            progressBar.visibility = View.GONE
+            resultsCard.visibility = View.VISIBLE
+            
+            // Show a toast with the number of suggestions
+            Toast.makeText(
+                this@SuggestItemsActivity,
+                "Generated ${items.size} suggestions for $destination",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+    
+    private fun fallbackToLocalRecommendations(
+        destination: String,
+        weatherData: WeatherData?,
+        tripDuration: Int,
+        weatherInfoText: String
     ) {
-        // Log input parameters
-        Log.d("SuggestItems", "==== STARTING AI RECOMMENDATION PROCESS ====")
-        Log.d("SuggestItems", "Destination: $destination")
-        Log.d("SuggestItems", "Trip Duration: $tripDuration days")
-        if (weatherData != null) {
-            Log.d("SuggestItems", "Weather Main: ${weatherData.main}")
-            Log.d("SuggestItems", "Weather Description: ${weatherData.description}")
-            Log.d("SuggestItems", "Temperature: ${weatherData.temp}°C (${weatherData.tempMin}°C - ${weatherData.tempMax}°C)")
-        } else {
-            Log.d("SuggestItems", "Weather Data: Not available")
-        }
+        Log.d("SuggestItems", "🔴 USING LOCAL RECOMMENDATIONS for $destination 🔴")
         
-        // Generate weather information text
-        val weatherInfoText = if (weatherData != null) {
-            "Weather in $destination: ${weatherData.description}, " +
-                    "Temperature: ${weatherData.temp.toInt()}°C (${weatherData.tempMin.toInt()}°C - ${weatherData.tempMax.toInt()}°C)"
-        } else {
-            "Weather information not available for $destination"
-        }
-        
-        // Basic items that everyone needs regardless of destination
+        // Use our original rule-based system
         val basicItems = listOf(
             Items(itemname = "Passport/ID", category = MyConstants.SUGGEST_ME_CAMEL_CASE, addedby = "system", checked = false),
             Items(itemname = "Money/Credit cards", category = MyConstants.SUGGEST_ME_CAMEL_CASE, addedby = "system", checked = false),
             Items(itemname = "Phone & charger", category = MyConstants.SUGGEST_ME_CAMEL_CASE, addedby = "system", checked = false),
             Items(itemname = "Travel insurance info", category = MyConstants.SUGGEST_ME_CAMEL_CASE, addedby = "system", checked = false)
         )
-        
-        Log.d("SuggestItems", "Basic Items: ${basicItems.size}")
         
         // Based on the weather and destination, create appropriate items
         val weatherBasedItems = mutableListOf<Items>()
@@ -532,56 +643,9 @@ class SuggestItemsActivity : AppCompatActivity() {
         // Combine all items and remove duplicates
         val allItems = (basicItems + weatherBasedItems + durationBasedItems + destinationBasedItems)
             .distinctBy { it.itemname }
-        
-        // Log the suggested items
-        Log.d("SuggestItems", "==== AI SUGGESTIONS RESULT ====")
-        Log.d("SuggestItems", "Total items suggested: ${allItems.size}")
-        Log.d("SuggestItems", "Weather-based items: ${weatherBasedItems.size}")
-        Log.d("SuggestItems", "Duration-based items: ${durationBasedItems.size}")
-        Log.d("SuggestItems", "Destination-based items: ${destinationBasedItems.size}")
-        Log.d("SuggestItems", "------------------------")
-        Log.d("SuggestItems", "AI Suggestions for $destination (${allItems.size} items):")
-        for (item in allItems) {
-            Log.d("SuggestItems", "- ${item.itemname}")
-        }
-        
-        if (allItems.isEmpty()) {
-            Log.e("SuggestItems", "WARNING: AI returned ZERO suggestions!")
-        }
-        
-        // Update UI
-        runOnUiThread {
-            Log.d("SuggestItems", "Updating UI with ${allItems.size} items")
-            weatherInfo.text = weatherInfoText
             
-            // Use the adapter's update method instead
-            adapter.updateItems(allItems)
-            
-            // Ensure RecyclerView is visible and has proper height
-            val recyclerViewHeight = if (allItems.size > 5) {
-                resources.displayMetrics.heightPixels / 2
-            } else {
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            }
-            suggestedItemsRecyclerView.layoutParams.height = recyclerViewHeight
-            suggestedItemsRecyclerView.visibility = View.VISIBLE
-            suggestedItemsRecyclerView.requestLayout()
-            
-            // Log all items to verify they are in the adapter
-            for (i in 0 until adapter.itemCount) {
-                Log.d("SuggestItems", "Item $i in adapter: ${suggestedItems.getOrNull(i)?.itemname}")
-            }
-            
-            progressBar.visibility = View.GONE
-            resultsCard.visibility = View.VISIBLE
-            
-            // Show a toast with the number of suggestions
-            Toast.makeText(
-                this@SuggestItemsActivity,
-                "Generated ${allItems.size} suggestions for $destination",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
+        // Update UI with the local recommendations
+        updateUIWithItems(allItems, weatherInfoText, destination)
     }
     
     private fun calculateTripDuration(): Int {
