@@ -2,12 +2,22 @@ package com.secpro.packyourbags.ui.auth
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import com.secpro.packyourbags.MainActivity
 import com.secpro.packyourbags.R
 import com.secpro.packyourbags.databinding.ActivityLoginBinding
@@ -20,6 +30,11 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var passwordLayout: TextInputLayout
     private lateinit var emailET: TextInputEditText
     private lateinit var passwordET: TextInputEditText
+    
+    private lateinit var googleSignInClient: GoogleSignInClient
+    private lateinit var googleSignInLauncher: ActivityResultLauncher<Intent>
+    
+    private val TAG = "LoginActivity"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,6 +42,9 @@ class LoginActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         auth = FirebaseAuth.getInstance()
+        
+        // Configure Google Sign In
+        configureGoogleSignIn()
 
         // Initialize views
         emailLayout = binding.textInputLayoutEmail
@@ -51,6 +69,74 @@ class LoginActivity : AppCompatActivity() {
                 signupUser()
             }
         }
+        
+        binding.buttonGoogleSignIn.setOnClickListener {
+            signInWithGoogle()
+        }
+        
+        // Register for Google Sign-In result
+        googleSignInLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                try {
+                    // Google Sign In was successful, authenticate with Firebase
+                    val account = task.getResult(ApiException::class.java)
+                    firebaseAuthWithGoogle(account)
+                } catch (e: ApiException) {
+                    // Google Sign In failed
+                    Log.w(TAG, "Google sign in failed", e)
+                    Snackbar.make(
+                        binding.root,
+                        "Google sign in failed: ${e.message}",
+                        Snackbar.LENGTH_SHORT
+                    ).show()
+                    showLoading(false)
+                }
+            } else {
+                showLoading(false)
+            }
+        }
+    }
+    
+    private fun configureGoogleSignIn() {
+        // Configure Google Sign In
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+        
+        googleSignInClient = GoogleSignIn.getClient(this, gso)
+    }
+    
+    private fun signInWithGoogle() {
+        showLoading(true)
+        val signInIntent = googleSignInClient.signInIntent
+        googleSignInLauncher.launch(signInIntent)
+    }
+    
+    private fun firebaseAuthWithGoogle(account: GoogleSignInAccount) {
+        Log.d(TAG, "firebaseAuthWithGoogle: ${account.id}")
+        
+        val credential = GoogleAuthProvider.getCredential(account.idToken, null)
+        auth.signInWithCredential(credential)
+            .addOnCompleteListener(this) { task ->
+                if (task.isSuccessful) {
+                    // Sign in success
+                    Log.d(TAG, "signInWithCredential:success")
+                    startMainActivity()
+                } else {
+                    // Sign in failed
+                    Log.w(TAG, "signInWithCredential:failure", task.exception)
+                    Snackbar.make(
+                        binding.root,
+                        "Authentication failed: ${task.exception?.message}",
+                        Snackbar.LENGTH_SHORT
+                    ).show()
+                    showLoading(false)
+                }
+            }
     }
 
     private fun validateInputs(): Boolean {
@@ -120,11 +206,12 @@ class LoginActivity : AppCompatActivity() {
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
         finish()
-            }
+    }
 
     private fun showLoading(show: Boolean) {
         binding.progressBar.visibility = if (show) View.VISIBLE else View.GONE
         binding.buttonLogin.isEnabled = !show
         binding.buttonSignup.isEnabled = !show
+        binding.buttonGoogleSignIn.isEnabled = !show
     }
 }

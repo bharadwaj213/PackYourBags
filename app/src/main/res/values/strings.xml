@@ -18,4 +18,7 @@
     <string name="suggested_items">Suggested Items</string>
     <string name="add_to_list">Add Selected Items to My List</string>
     <string name="add_to_recommended">Add to Recommended Items</string>
+    
+    <!-- Firebase Authentication -->
+    <string name="default_web_client_id">681946096903-hab8n3vs5sf44a3qdqnn3dl0v7mgidrf.apps.googleusercontent.com</string>
 </resources>

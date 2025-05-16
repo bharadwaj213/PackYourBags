@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    
+    <!-- Background Circle -->
+    <path
+        android:pathData="M12,12m-11,0a11,11 0,1 1,22 0a11,11 0,1 1,-22 0"
+        android:fillColor="#E3F2FD"/>
+    
+    <!-- Thumbs Up - Blue -->
+    <path
+        android:pathData="M9.5,5L8,10L9,10A1,1 0,0 1,10 11L10,16.5A1.5,1.5 0,0 1,8.5 18L8.5,18A1.5,1.5 0,0 1,7 16.5L7,11C7,10.4 7.4,10 8,10L8,10L7,4.5C7,4.2 7.2,4 7.5,4L8.5,4A1.5,1.5 0,0 1,9.5 5Z"
+        android:fillColor="#1976D2"/>
+    
+    <!-- Thumb Part -->
+    <path
+        android:pathData="M10,10L15,10C15.8,10 16.5,10.6 16.5,11.3L16.5,11.8C16.5,11.9 16.5,12 16.5,12.1L15.6,16.1C15.5,16.6 15,17 14.5,17L10,17L10,10Z"
+        android:fillColor="#2196F3"/>
+        
+    <!-- List Items -->
+    <path
+        android:pathData="M17,6h3v12h-3z"
+        android:fillColor="#BBDEFB"/>
+        
+    <!-- List Item Details - Lines -->
+    <path
+        android:pathData="M18,8h1v1h-1z"
+        android:fillColor="#90CAF9"/>
+        
+    <path
+        android:pathData="M18,10h1v1h-1z"
+        android:fillColor="#90CAF9"/>
+        
+    <path
+        android:pathData="M18,12h1v1h-1z"
+        android:fillColor="#90CAF9"/>
+        
+    <path
+        android:pathData="M18,14h1v1h-1z"
+        android:fillColor="#90CAF9"/>
+</vector> 

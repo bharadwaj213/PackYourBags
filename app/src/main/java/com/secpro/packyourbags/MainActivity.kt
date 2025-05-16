@@ -116,7 +116,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             R.drawable.baby_needs, R.drawable.health, R.drawable.technology,
             R.drawable.food, R.drawable.beach, R.drawable.car,
             R.drawable.need, R.drawable.mylist, R.drawable.selection,
-            R.drawable.suggest_me, R.drawable.mylist // Reuse mylist icon for recommended items
+            R.drawable.suggest_me, R.drawable.ic_recommended_lists // Use our new custom icon
         )
     }
 

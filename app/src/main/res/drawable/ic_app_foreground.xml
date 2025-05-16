@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Suitcase Main Body - Teal -->
+    <path
+        android:pathData="M30,38L78,38A6,6 0,0 1,84 44L84,78A6,6 0,0 1,78 84L30,84A6,6 0,0 1,24 78L24,44A6,6 0,0 1,30 38z"
+        android:fillColor="#00BCD4"/>
+    
+    <!-- Suitcase Top Handle - Coral -->
+    <path
+        android:pathData="M44,24L64,24A5,5 0,0 1,69 29L69,38A0,0 0,0 1,69 38L39,38A0,0 0,0 1,39 38L39,29A5,5 0,0 1,44 24z"
+        android:fillColor="#FF7F50"/>
+    
+    <!-- Suitcase Horizontal Line - Dark Teal -->
+    <path
+        android:pathData="M24,56h60v2h-60z"
+        android:fillColor="#008B9E"/>
+    
+    <!-- Suitcase Tag - Yellow -->
+    <path
+        android:pathData="M72,46m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0"
+        android:fillColor="#FFEB3B"/>
+    
+    <!-- Sun Icon - Yellow -->
+    <path
+        android:pathData="M38,46m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0"
+        android:fillColor="#FFEB3B"/>
+    <path
+        android:pathData="M38,36L38,39"
+        android:strokeWidth="2"
+        android:strokeColor="#FFEB3B"/>
+    <path
+        android:pathData="M38,53L38,56"
+        android:strokeWidth="2"
+        android:strokeColor="#FFEB3B"/>
+    <path
+        android:pathData="M28,46L31,46"
+        android:strokeWidth="2"
+        android:strokeColor="#FFEB3B"/>
+    <path
+        android:pathData="M45,46L48,46"
+        android:strokeWidth="2"
+        android:strokeColor="#FFEB3B"/>
+    <path
+        android:pathData="M31,39L33,41"
+        android:strokeWidth="2"
+        android:strokeColor="#FFEB3B"/>
+    <path
+        android:pathData="M43,51L45,53"
+        android:strokeWidth="2"
+        android:strokeColor="#FFEB3B"/>
+    <path
+        android:pathData="M31,53L33,51"
+        android:strokeWidth="2"
+        android:strokeColor="#FFEB3B"/>
+    <path
+        android:pathData="M43,41L45,39"
+        android:strokeWidth="2"
+        android:strokeColor="#FFEB3B"/>
+    
+    <!-- Map Icon - Light Blue -->
+    <path
+        android:pathData="M55,70m-10,0a10,10 0,1 1,20 0a10,10 0,1 1,-20 0"
+        android:fillColor="#64B5F6"/>
+    
+    <!-- Checklist Items - White -->
+    <path
+        android:pathData="M39,66h8v2h-8z"
+        android:fillColor="#FFFFFF"/>
+    <path
+        android:pathData="M39,70h8v2h-8z"
+        android:fillColor="#FFFFFF"/>
+    <path
+        android:pathData="M39,74h8v2h-8z"
+        android:fillColor="#FFFFFF"/>
+    
+    <!-- Airplane Icon - Coral -->
+    <path
+        android:pathData="M60,67L65,70L65,70L70,67L70,65L65,62L60,65L55,64L55,66L60,67z"
+        android:fillColor="#FF7F50"/>
+    
+    <!-- Mountain in Map - White -->
+    <path
+        android:pathData="M51,70L55,64L59,70z"
+        android:fillColor="#FFFFFF"/>
+    
+    <!-- Small Decorative Dots -->
+    <path
+        android:pathData="M72,76m-2,0a2,2 0,1 1,4 0a2,2 0,1 1,-4 0"
+        android:fillColor="#FFEB3B"/>
+    <path
+        android:pathData="M66,78m-2,0a2,2 0,1 1,4 0a2,2 0,1 1,-4 0"
+        android:fillColor="#FF7F50"/>
+    <path
+        android:pathData="M76,70m-2,0a2,2 0,1 1,4 0a2,2 0,1 1,-4 0"
+        android:fillColor="#64B5F6"/>
+</vector> 
